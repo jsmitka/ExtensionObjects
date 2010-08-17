@@ -46,7 +46,6 @@ class Greeter extends ExtensibleObject
 
 	protected function getMark()
 	{
-		die('!');
 		return '!';
 	}
 
