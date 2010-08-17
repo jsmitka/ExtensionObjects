@@ -64,6 +64,12 @@ abstract class ExtensionObject
 	}
 
 
+	protected function getObject()
+	{
+		return $this->object;
+	}
+
+
 	/**
 	 * Returns reflection for this extension object.
 	 * @return ClassReflection

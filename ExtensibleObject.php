@@ -50,6 +50,8 @@ abstract class ExtensibleObject extends Object
 {
 	const USE_ANNOTATION = 'use';
 
+	static private $classExtensions = array();
+
 	/** @var array */
 	private $extensions;
 
@@ -59,13 +61,94 @@ abstract class ExtensibleObject extends Object
 	}
 
 
+	/**
+	 * Attaches a new ExtensionObject to this ExtensibleObject descendant.
+	 * @param string $className
+	 */
+	static public function extensionObject($className)
+	{
+		$class = \get_called_class();
+		if (!isset(self::$classExtensions[$class])) {
+			self::$classExtensions[$class] = array();
+		}
+		if (!in_array($className, self::$classExtensions[$class])) {
+			\array_unshift(self::$classExtensions[$class], $className);
+		}
+	}
+
+
+	public function __call($name, $args)
+	{
+		foreach ($this->getExtensions() as $extension) {
+			/* @var $extension ExtensionObject */
+			if ($extension->getReflection()->hasMethod($name)) {
+				$method = $extension->getReflection()->getMethod($name);
+				if ($method->isPublic() && !$method->isStatic() && !$method->isAbstract()) {
+					return \callback($extension, $name)->invokeArgs($args);
+				}
+			}
+
+			if ($extension->getReflection()->hasEventProperty($name)) {
+				return ObjectMixin::call($extension, $name, $args);
+			}
+		}
+
+		return parent::__call($name, $args);
+	}
+
+
+	public function &__get($name)
+	{
+		foreach ($this->getExtensions() as $extension) {
+			/* @var $extension ExtensionObject */
+			if ($extension->getReflection()->hasProperty($name)) {
+				$property = $extension->getReflection()->getProperty($name);
+				if ($property->isPublic() && !$property->isStatic()) {
+					return $extension->$name;
+				}
+			}
+
+			if (ObjectMixin::has($extension, $name)) {
+				return ObjectMixin::get($extension, $name);
+			}
+		}
+
+		return parent::__get($name);
+	}
+
+	public function __set($name, $value)
+	{
+		foreach ($this->getExtensions() as $extension) {
+			/* @var $extension ExtensionObject */
+			if ($extension->getReflection()->hasProperty($name)) {
+				$property = $extension->getReflection()->getProperty($name);
+				if ($property->isPublic() && !$property->isStatic()) {
+					$extension->$name = $value;
+					return;
+				}
+			}
+
+			if (ObjectMixin::has($extension, $name)) {
+				ObjectMixin::set($extension, $name, $value);
+				return;
+			}
+		}
+
+		return parent::__set($name, $value);
+	}
+
+
 	private function initializeExtensions()
 	{
+		$class = \get_class($this);
 		$this->extensions = array();
 		$reflection = $this->getReflection();
-		if ($reflection->hasAnnotation(self::USE_ANNOTATION)) {
+		if (isset(self::$classExtensions[$class]) || $reflection->hasAnnotation(self::USE_ANNOTATION)) {
 			$baseNamespace = (($t = \strrpos($class = get_class($this), '\\')) ? \substr($class, 0, $t + 1) : '');
 			$extensions = (array) $reflection->getAnnotation(self::USE_ANNOTATION);
+			if (isset(self::$classExtensions[$class])) {
+				$extensions = \array_merge(self::$classExtensions[$class], $extensions);
+			}
 			foreach ($extensions as &$extension) {
 				if ($extension[0] != '\\' && $baseNamespace) {
 					$extension = $baseNamespace . $extension;
@@ -85,51 +168,5 @@ abstract class ExtensibleObject extends Object
 			$this->initializeExtensions();
 		}
 		return $this->extensions;
-	}
-
-
-	public function __call($name, $args)
-	{
-		foreach ($this->getExtensions() as $extension) {
-			/* @var $extension ExtensionObject */
-			if ($extension->getReflection()->hasMethod($name)) {
-				$method = $extension->getReflection()->getMethod($name);
-				if (!$method->isPrivate() && !$method->isStatic() && !$method->isAbstract()) {
-					if ($method->isProtected()) {
-						$method->setAccessible(TRUE);
-						return $method->invokeArgs($extension, $args);
-					} else {
-						return \callback($extension, $name)->invokeArgs($args);
-					}
-				}
-			}
-		}
-
-		return parent::__call($name, $args);
-	}
-
-
-	public function &__get($name)
-	{
-		foreach ($this->getExtensions() as $extension) {
-			/* @var $extension ExtensionObject */
-			if (ObjectMixin::has($extension, $name)) {
-				return ObjectMixin::get($extension, $name);
-			}
-		}
-
-		return parent::__get($name);
-	}
-
-	public function __set($name, $value)
-	{
-		foreach ($this->getExtensions() as $extension) {
-			/* @var $extension ExtensionObject */
-			if (ObjectMixin::has($extension, $name)) {
-				return ObjectMixin::set($extension, $name, $value);
-			}
-		}
-
-		return parent::__set($name, $value);
 	}
 }

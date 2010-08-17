@@ -38,7 +38,7 @@ use NetteExtras\ExtensionObjects\ExtensionObject;
 
 
 /**
- * @use(Hello, Bonjour, French)
+ * @use(Hello, Bonjour, French, Property, Event)
  */
 class Greeter extends ExtensibleObject
 {
@@ -46,21 +46,29 @@ class Greeter extends ExtensibleObject
 
 	protected function getMark()
 	{
+		die('!');
 		return '!';
 	}
 
 
-	private $property = 42;
+	private $ownProperty = 42;
 
-	public function getProperty()
+	public function getOwnProperty()
 	{
-		return $this->property;
+		return $this->ownProperty;
 	}
 
-	public function setProperty($property)
+	public function setOwnProperty($ownProperty)
 	{
-		$this->property = $property;
+		$this->ownProperty = $ownProperty;
 	}
+}
+
+
+
+class Plain extends ExtensibleObject
+{
+
 }
 
 
@@ -70,21 +78,6 @@ class Hello extends ExtensionObject
 	{
 		return 'Hello, ' . $this->name . $this->getMark();
 	}
-
-
-	private $helloProperty = 42;
-
-	public function getHelloProperty()
-	{
-		return $this->helloProperty;
-	}
-
-	public function setHelloProperty($helloProperty)
-	{
-		$this->helloProperty = $helloProperty;
-	}
-
-
 }
 
 
@@ -106,9 +99,41 @@ class Bonjour extends ExtensionObject
 
 class French extends ExtensionObject
 {
-	protected function getFrenchMark()
+	public function getFrenchMark()
 	{
 		return ' !';
 	}
 }
 
+
+class Property extends ExtensionObject
+{
+	protected $protectedProperty = FALSE;
+
+	private $helloProperty = 42;
+
+	public function getHelloProperty()
+	{
+		return $this->helloProperty;
+	}
+
+	public function setHelloProperty($helloProperty)
+	{
+		$this->helloProperty = $helloProperty;
+	}
+}
+
+
+class Event extends ExtensionObject
+{
+	public $onEvent = array();
+}
+
+
+class Dynamic extends ExtensionObject
+{
+	public function dynamicMethod()
+	{
+		return TRUE;
+	}
+}
